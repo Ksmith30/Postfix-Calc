@@ -1,4 +1,4 @@
-// PF2 Project #4
+// PF2 Project #5
 // ID: 010711584
 /// Name: Kyle Smith
 
@@ -6,6 +6,7 @@
 #include <vector>
 #include <stack>
 #include <string>
+#include <sstream>
 using namespace std;
 const string addition = "+";
 const string subtraction = "-";
@@ -24,10 +25,8 @@ bool checkOperator(const string& temp)
 // Returns precedence of operators
 int getPrecedence(const string &temp)
 {
-    if (temp == addition || temp == subtraction)
-        return 1;
-    else if (temp == multiplication || temp == division)
-        return 2;
+    if (temp == addition || temp == subtraction) return 1;
+    else if (temp == multiplication || temp == division) return 2;
     else return 0;
 }
 
@@ -49,7 +48,8 @@ bool findLeftParentheses(stack<string>& track, vector<string>& postfix)
 
 // Djikstra's shunting yard that takes an expression and converts it to a postfix
 // expression
-bool shuntingYard(const vector<string>& expression, vector<string>& postfix)
+bool shuntingYard(const vector<string>& expression,
+        vector<string>& postfix)
 {
     stack<string> track;
     
@@ -118,7 +118,8 @@ void performOperation(stack<string>& numbers, const string& temp)
 }
 
 // Evaluates postfix expression and returns a result
-bool evaluatePostfix(const vector<string>& postfix, double& result)
+bool evaluatePostfix(const vector<string>& postfix,
+        double& result)
 {
     stack<string> numbers;
     
@@ -147,44 +148,40 @@ bool evaluatePostfix(const vector<string>& postfix, double& result)
 int main()
 {
     // Take Expression to be evaluated
-    vector<string> expression;
     
-    string token;
-    cout << "Enter the expression to be evaluated (Enter + CTRL-D to end): " << endl;
-    while (cin >> token)
-        expression.push_back(token);
-    
-    // Print out infix expression
-    cout << endl << "Expression: ";
-    for (const string& i : expression)
-        cout << i << ' ';
-    cout << endl;
-    
-    // Convert to postfix 
-    vector<string> postfix;
+    cout << "Enter Q to exit." << endl;
+    string str;
+  
+    while (str != "Q")
+    {
+        vector<string> expression;
+        cout << ">> ";
+        getline(cin, str);
+        if (str == "Q")
+            break;
+        stringstream ss(str);
+        while (ss >> str)
+            expression.push_back(str);
+        
+        // Convert to postfix 
+        vector<string> postfix;
+        if (!shuntingYard(expression, postfix))
+            cout << "Mismatched Parentheses." << endl;
+        
+        else 
+        {
+            // Simplify
+            double answer = 0;
 
-    if (!shuntingYard(expression, postfix))
-    {
-        cout << "Mismatched Parentheses.";
-        return -1;
+            if (!evaluatePostfix(postfix, answer))
+                cout << "Expression was malformed." << endl;
+
+            // Return answer
+            else cout << answer << endl;
+        }
     }
-    
-    for (const string& i: postfix)
-        cout << i << ' ';
-    cout << endl; 
-    
-    // Simplify
-    double answer = 0;
-    
-    if (!evaluatePostfix(postfix, answer))
-    {
-        cout << "Expression was malformed.";
-        return -1;
-    }
-    
-    // Return answer
-    cout << "Answer: " << answer << endl;
     
     return 0;
 }
+
 
