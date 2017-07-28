@@ -1,12 +1,10 @@
-// PF2 Project #5
-// ID: 010711584
-/// Name: Kyle Smith
-
 #include <iostream>
 #include <vector>
 #include <stack>
 #include <string>
 #include <sstream>
+#include <map>
+#include <cmath>
 using namespace std;
 const string addition = "+";
 const string subtraction = "-";
@@ -15,8 +13,15 @@ const string division = "/";
 const string leftParentheses = "(";
 const string rightParentheses = ")";
 
+// Returns true if given a function name
+bool checkFunction(const string& temp)
+{
+    return (temp == "max" || temp == "min" || temp == "sin" || temp == "cos" ||
+            temp == "tan");
+}
+
 // Returns if given string is an operator
-bool checkOperator(const string& temp)
+bool isOperator(const string& temp)
 {
     return (temp == addition || temp == subtraction || temp == multiplication 
         || temp == division);
@@ -27,6 +32,7 @@ int getPrecedence(const string &temp)
 {
     if (temp == addition || temp == subtraction) return 1;
     else if (temp == multiplication || temp == division) return 2;
+    else if (checkFunction(temp)) return 3;
     else return 0;
 }
 
@@ -56,9 +62,10 @@ bool shuntingYard(const vector<string>& expression,
     for (const string& i : expression)
     {
         // Check if operator
-        if (!checkOperator(i) && i != leftParentheses && i != rightParentheses)
+        if (!isOperator(i) && i != leftParentheses && i != rightParentheses && 
+                !checkFunction(i))
             postfix.push_back(i);
-        else if (checkOperator(i))
+        else if (isOperator(i))
         {
             while (!track.empty() && (getPrecedence(track.top()) >= getPrecedence(i)))
             {
@@ -67,7 +74,7 @@ bool shuntingYard(const vector<string>& expression,
             }
             track.push(i);
         }
-        else if (i == leftParentheses)
+        else if (i == leftParentheses || checkFunction(i))
             track.push(i);
         else if (i == rightParentheses)
         {
@@ -79,70 +86,59 @@ bool shuntingYard(const vector<string>& expression,
     return !findLeftParentheses(track, postfix);
 }
 
-// Converts number from string to double
-double convertNumber(stack<string>& temp)
+// Determine whether the input is 
+bool checkUnary(const string& temp)
 {
-    if (!temp.empty())
-    {
-        string sNumber = temp.top();
-        double number = stod(sNumber);
-        return number;
-    }
-    return double();
+    return (temp == "sin" || temp == "cos" || temp == "tan");
 }
 
 // Performs operation on two numbers
-void performOperation(stack<string>& numbers, const string& temp)
+double applyOperator(const string& op, double left, double right)
 {
-    double answer = 0;
-    
-    // Pop numbers off the stack if operand
-    double number2 = convertNumber(numbers);
-    numbers.pop();
-    double number1 = convertNumber(numbers);
-    numbers.pop();
-
     // Perform necessary operation
-    if (temp == addition)
-        answer = number1 + number2;
-    else if (temp == subtraction)
-        answer = number1 - number2;
-    else if (temp == multiplication)
-        answer = number1 * number2;
-    else if (temp == division)
-        answer = number1 / number2;
-
-    // Convert answer to string and push to stack
-    string sAnswer = to_string(answer);
-    numbers.push(sAnswer);
+    if      (op == addition)       return left + right;
+    else if (op == subtraction)    return left - right;
+    else if (op == multiplication) return left * right;
+    else if (op == division)       return left / right;
+    else if (op == "max")          return max(left, right);
+    else if (op == "min")          return min(left, right);
+    else if (op == "sin")          return sin(right);
+    else if (op == "cos")          return cos(right);
+    else if (op == "tan")          return tan(right);
+    else                           return 0.0;
 }
 
 // Evaluates postfix expression and returns a result
 bool evaluatePostfix(const vector<string>& postfix,
         double& result)
 {
-    stack<string> numbers;
+    stack<double> numbers;
     
     // Iterate through postfix
     for (const string& i : postfix)
     {
-        // Push number to stack
-        if (!checkOperator(i)) numbers.push(i);
-          
-        else
+        // Check if it is operator
+        if (isOperator(i) || checkFunction(i))
         {
-            if (numbers.size() > 1)
-                performOperation(numbers, i);
-            else return false;
+            if (numbers.empty()) return false;
+            double left, right;
+            right = numbers.top();
+            numbers.pop();
+            if (!checkUnary(i))
+            {
+                if (numbers.empty()) return false;
+                left = numbers.top();
+                numbers.pop();
+            }
+            numbers.push(applyOperator(i, left, right));
         }
+        
+        // Numbers pushed directly to the stack
+        else numbers.push(atof(i.c_str()));
     }
     
-    // Check for incorrect evaluation
-    if (numbers.size() > 1 || numbers.empty())
-        return false;
-    
-    result = convertNumber(numbers);
-    return true;
+    result = numbers.top();
+    return !numbers.empty() && (numbers.size() == 1);
 }
 
 int main()
@@ -152,7 +148,7 @@ int main()
     cout << "Enter Q to exit." << endl;
     string str;
   
-    while (str != "Q")
+    while (true)
     {
         vector<string> expression;
         cout << ">> ";
@@ -165,14 +161,19 @@ int main()
         
         // Convert to postfix 
         vector<string> postfix;
-        if (!shuntingYard(expression, postfix))
+        if (!shuntingYard(expression, postfix) || expression.empty())
             cout << "Mismatched Parentheses." << endl;
         
         else 
         {
             // Simplify
             double answer = 0;
-
+            
+            cout << "Postfix: " << endl;
+            for (const string& i : postfix)
+                cout << i << ' ';
+            cout << endl;
+            
             if (!evaluatePostfix(postfix, answer))
                 cout << "Expression was malformed." << endl;
 
@@ -183,5 +184,4 @@ int main()
     
     return 0;
 }
-
 
