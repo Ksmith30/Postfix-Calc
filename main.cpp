@@ -6,12 +6,6 @@
 #include <map>
 #include <cmath>
 using namespace std;
-const string addition = "+";
-const string subtraction = "-";
-const string multiplication = "*";
-const string division = "/";
-const string leftParentheses = "(";
-const string rightParentheses = ")";
 
 // Returns true if given a function name
 bool checkFunction(const string& temp)
@@ -23,17 +17,16 @@ bool checkFunction(const string& temp)
 // Returns if given string is an operator
 bool isOperator(const string& temp)
 {
-    return (temp == addition || temp == subtraction || temp == multiplication 
-        || temp == division);
+    return (temp == "+" || temp == "-" || temp == "*" || temp == "/");
 }
 
 // Returns precedence of operators
 int getPrecedence(const string &temp)
 {
-    if (temp == addition || temp == subtraction) return 1;
-    else if (temp == multiplication || temp == division) return 2;
-    else if (checkFunction(temp)) return 3;
-    else return 0;
+    if (temp == "+" || temp == "-")      return 1;
+    else if (temp == "*" || temp == "/") return 2;
+    else if (checkFunction(temp))        return 3;
+    else                                 return 0;
 }
 
 // Returns if left Parentheses is found
@@ -41,7 +34,7 @@ bool findLeftParentheses(stack<string>& track, vector<string>& postfix)
 {
     while (!track.empty())
     {
-        if (track.top() == leftParentheses)
+        if (track.top() == "(")
         {
             track.pop();
             return true;
@@ -54,33 +47,32 @@ bool findLeftParentheses(stack<string>& track, vector<string>& postfix)
 
 // Djikstra's shunting yard that takes an expression and converts it to a postfix
 // expression
-bool shuntingYard(const vector<string>& expression,
+bool shuntingYard(const vector<string>& expression, const int startIndex,
         vector<string>& postfix)
 {
     stack<string> track;
     
-    for (const string& i : expression)
+    for (int i = startIndex; i < expression.size(); ++i)
     {
-        // Check if operator
-        if (!isOperator(i) && i != leftParentheses && i != rightParentheses && 
-                !checkFunction(i))
-            postfix.push_back(i);
-        else if (isOperator(i))
+        if (isOperator(expression[i]))
         {
-            while (!track.empty() && (getPrecedence(track.top()) >= getPrecedence(i)))
+            while (!track.empty() && 
+                    (getPrecedence(track.top()) >= getPrecedence(expression[i])))
             {
                 postfix.push_back(track.top());
                 track.pop();
             }
-            track.push(i);
+            track.push(expression[i]);
         }
-        else if (i == leftParentheses || checkFunction(i))
-            track.push(i);
-        else if (i == rightParentheses)
+        else if (expression[i] == "(" || checkFunction(expression[i]))
+            track.push(expression[i]);
+        else if (expression[i] == ")")
         {
             if (!findLeftParentheses(track, postfix))
                 return false;
         }
+        else
+            postfix.push_back(expression[i]);
     }
     
     return !findLeftParentheses(track, postfix);
@@ -96,10 +88,10 @@ bool checkUnary(const string& temp)
 double applyOperator(const string& op, double left, double right)
 {
     // Perform necessary operation
-    if      (op == addition)       return left + right;
-    else if (op == subtraction)    return left - right;
-    else if (op == multiplication) return left * right;
-    else if (op == division)       return left / right;
+    if      (op == "+")            return left + right;
+    else if (op == "-")            return left - right;
+    else if (op == "*")            return left * right;
+    else if (op == "/")            return left / right;
     else if (op == "max")          return max(left, right);
     else if (op == "min")          return min(left, right);
     else if (op == "sin")          return sin(right);
@@ -109,7 +101,7 @@ double applyOperator(const string& op, double left, double right)
 }
 
 // Evaluates postfix expression and returns a result
-bool evaluatePostfix(const vector<string>& postfix,
+bool evaluatePostfix(const vector<string>& postfix, const map<string, double>& variables,
         double& result)
 {
     stack<double> numbers;
@@ -117,13 +109,13 @@ bool evaluatePostfix(const vector<string>& postfix,
     // Iterate through postfix
     for (const string& i : postfix)
     {
-        // Check if it is operator
         if (isOperator(i) || checkFunction(i))
         {
             if (numbers.empty()) return false;
             double left, right;
             right = numbers.top();
             numbers.pop();
+            
             if (!checkUnary(i))
             {
                 if (numbers.empty()) return false;
@@ -133,8 +125,13 @@ bool evaluatePostfix(const vector<string>& postfix,
             numbers.push(applyOperator(i, left, right));
         }
         
+        // Check if variable exists
+        else if (variables.count(i) > 0)
+            numbers.push(variables.at(i));
+        
         // Numbers pushed directly to the stack
-        else numbers.push(atof(i.c_str()));
+        else 
+            numbers.push(atof(i.c_str()));
     }
     
     result = numbers.top();
@@ -142,16 +139,20 @@ bool evaluatePostfix(const vector<string>& postfix,
 }
 
 int main()
-{
-    // Take Expression to be evaluated
-    
+{  
     cout << "Enter Q to exit." << endl;
     string str;
+    map<string, double> variables;
   
     while (true)
     {
+        // Initialize 
         vector<string> expression;
+        int startIndex = 0;
+        string variableName = " ";
         cout << ">> ";
+        
+        // Get Expression
         getline(cin, str);
         if (str == "Q")
             break;
@@ -159,9 +160,19 @@ int main()
         while (ss >> str)
             expression.push_back(str);
         
+        // Check if variable
+        for (const string& i : expression)
+        {
+            if (i == "=") 
+            {
+                startIndex = 2;
+                variableName = expression[0];
+            }
+        }
+               
         // Convert to postfix 
         vector<string> postfix;
-        if (!shuntingYard(expression, postfix) || expression.empty())
+        if (!shuntingYard(expression, startIndex, postfix) || expression.empty())
             cout << "Mismatched Parentheses." << endl;
         
         else 
@@ -169,19 +180,18 @@ int main()
             // Simplify
             double answer = 0;
             
-            cout << "Postfix: " << endl;
-            for (const string& i : postfix)
-                cout << i << ' ';
-            cout << endl;
-            
-            if (!evaluatePostfix(postfix, answer))
+            if (!evaluatePostfix(postfix, variables, answer))
                 cout << "Expression was malformed." << endl;
-
+            
             // Return answer
-            else cout << answer << endl;
+            else
+            {
+                cout << answer << endl;
+                if (variableName != " ")
+                    variables[variableName] = answer;
+            }
         }
     }
-    
     return 0;
 }
 
